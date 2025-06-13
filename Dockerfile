@@ -1,19 +1,22 @@
 # --- ETAPA DE CONSTRUCCIÓN ---
 FROM node:18-alpine AS builder
 
+# Instalar pnpm globalmente
+RUN npm install -g pnpm
+
 WORKDIR /app
 
 # Copiar package.json y pnpm-lock.yaml para instalar dependencias
 COPY package.json pnpm-lock.yaml ./
 
-# Instalar dependencias
-RUN npm install --frozen-lockfile
+# Instalar dependencias usando pnpm
+RUN pnpm install --frozen-lockfile
 
 # Copiar el resto del código fuente
 COPY . .
 
-# Construir la aplicación
-RUN npm run build
+# Construir la aplicación usando pnpm
+RUN pnpm run build
 
 # --- ETAPA DE EJECUCIÓN ---
 FROM node:18-alpine
