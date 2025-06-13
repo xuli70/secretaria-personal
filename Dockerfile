@@ -7,6 +7,11 @@ WORKDIR /app
 # Copiar los archivos de la aplicación (package.json y pnpm-lock.yaml para instalar dependencias)
 COPY package.json pnpm-lock.yaml ./
 
+# --- INICIO: FORZAR RECONSTRUCCIÓN DE CACHÉ ---
+ARG CACHE_BREAKER=$(date +%s)
+RUN echo "Cache breaker: ${CACHE_BREAKER}"
+# --- FIN: FORZAR RECONSTRUCCIÓN DE CACHÉ ---
+
 # Instalar dependencias y construir la aplicación
 RUN npm install --frozen-lockfile
 RUN npm run build
