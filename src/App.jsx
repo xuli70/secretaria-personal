@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { MessageSquare, Settings, Send, Loader2, Paperclip } from 'lucide-react';
+import { MessageSquare, Settings, Send, Loader2, Paperclip, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Textarea } from '@/components/ui/textarea.jsx';
@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { ScrollArea } from '@/components/ui/scroll-area.jsx';
+import Login from './components/Login.jsx';
 import './App.css';
 
 // Componente principal de mensajería
-function MessagingInterface() {
+function MessagingInterface({ onLogout }) {
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -160,8 +161,6 @@ function MessagingInterface() {
     localStorage.removeItem('chat-messages');
   };
 
-  console.log('[DEBUG - MessagingInterface] Renderizando Input Area. config?.endpoint:', config?.endpoint);
-
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
@@ -186,6 +185,15 @@ function MessagingInterface() {
               className="text-gray-600 hover:text-gray-800"
             >
               Limpiar Chat
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onLogout}
+              className="text-red-600 hover:text-red-800"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              Salir
             </Button>
           </div>
         </div>
@@ -252,7 +260,6 @@ function MessagingInterface() {
       {/* Input Area */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-4xl mx-auto">
-          {/* FORZAR RENDERIZADO DEL BOTÓN DE ADJUNTAR ARCHIVO PARA DEPURACIÓN */}
           <div className="flex space-x-2 items-end">
             <input
               type="file"
@@ -264,10 +271,7 @@ function MessagingInterface() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => {
-                console.log('[DEBUG] Botón de adjuntar archivo clickeado.');
-                fileInputRef.current.click();
-              }}
+              onClick={() => fileInputRef.current.click()}
               className="shrink-0"
             >
               <Paperclip className="h-4 w-4" />
@@ -304,7 +308,7 @@ function MessagingInterface() {
 }
 
 // Componente de administración
-function AdminPanel() {
+function AdminPanel({ onLogout }) {
   const [config, setConfig] = useState({
     endpoint: '',
     apiKey: '',
@@ -386,16 +390,27 @@ function AdminPanel() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 mb-2">
-            <Settings className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-              Panel de Administración
-            </h1>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="flex items-center space-x-2 mb-2">
+              <Settings className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+                Panel de Administración
+              </h1>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400">
+              Configura la conexión con tu instancia de n8n
+            </p>
           </div>
-          <p className="text-gray-600 dark:text-gray-400">
-            Configura la conexión con tu instancia de n8n
-          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onLogout}
+            className="text-red-600 hover:text-red-800"
+          >
+            <LogOut className="h-4 w-4 mr-1" />
+            Salir
+          </Button>
         </div>
 
         <Card>
@@ -525,9 +540,64 @@ function AdminPanel() {
   );
 }
 
-// Componente principal de la aplicación
+// Componente principal de la aplicación con autenticación
 function App() {
-  console.log('[DEBUG - App] La aplicación se está renderizando. Versión de depuración.');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Verificar si el usuario ya está autenticado
+    const checkAuth = () => {
+      const authStatus = localStorage.getItem('isAuthenticated');
+      const authTimestamp = localStorage.getItem('authTimestamp');
+      
+      if (authStatus === 'true' && authTimestamp) {
+        // Opcional: verificar si la sesión no ha expirado (ej. 24 horas)
+        const twentyFourHours = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+        const now = Date.now();
+        
+        if (now - parseInt(authTimestamp) < twentyFourHours) {
+          setIsAuthenticated(true);
+        } else {
+          // Sesión expirada, limpiar localStorage
+          localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('authTimestamp');
+        }
+      }
+      
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('authTimestamp');
+    setIsAuthenticated(false);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Cargando...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  console.log('[DEBUG - App] La aplicación se está renderizando con autenticación exitosa.');
+  
   return (
     <Router>
       <div className="min-h-screen">
@@ -544,11 +614,11 @@ function App() {
           </TabsList>
           
           <TabsContent value="chat" className="flex-1 m-0">
-            <MessagingInterface />
+            <MessagingInterface onLogout={handleLogout} />
           </TabsContent>
           
           <TabsContent value="admin" className="flex-1 m-0">
-            <AdminPanel />
+            <AdminPanel onLogout={handleLogout} />
           </TabsContent>
         </Tabs>
       </div>
@@ -557,5 +627,3 @@ function App() {
 }
 
 export default App;
-
-
