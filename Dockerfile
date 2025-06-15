@@ -6,38 +6,29 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# Copiar archivos de configuración
+# Copiar package.json y pnpm-lock.yaml
 COPY package.json pnpm-lock.yaml* ./
 
-# Intentar instalación con frozen-lockfile, si falla usar modo normal
-RUN pnpm install --frozen-lockfile || pnpm install
+# Instalar dependencias usando pnpm (sin frozen-lockfile para CI)
+RUN pnpm install --no-frozen-lockfile
 
 # Copiar el resto del código fuente
 COPY . .
 
-# Construir la aplicación
+# Construir la aplicación usando pnpm
 RUN pnpm run build
 
 # --- ETAPA DE EJECUCIÓN ---
 FROM node:18-alpine
 
-# Instalar serve y herramientas necesarias
-RUN npm install -g serve && \
-    apk add --no-cache curl && \
-    addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+# Instalar serve y curl para healthcheck
+RUN npm install -g serve && apk add --no-cache curl
 
 # Crear directorio de trabajo
 WORKDIR /app
 
-# Cambiar ownership al usuario no-root
-RUN chown nextjs:nodejs /app
-
-# Cambiar a usuario no-root
-USER nextjs
-
-# Copiar los archivos construidos
-COPY --from=builder --chown=nextjs:nodejs /app/dist/ .
+# Copiar los archivos construidos desde la etapa 'builder'
+COPY --from=builder /app/dist/ .
 
 # Exponer el puerto 3000
 EXPOSE 3000
